@@ -19,7 +19,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Install NSIS
-        run: choco install nsis -y --no-progress
+        shell: bash
+        run: |
+          choco install nsis -y --no-progress
+          # Chocolatey updates the machine PATH but newer runners don't always
+          # propagate that to this job's PATH, so advertise it explicitly.
+          echo 'C:\Program Files (x86)\NSIS' >> "$GITHUB_PATH"
 
       - uses: Swatinem/rust-cache@v2
         with:
