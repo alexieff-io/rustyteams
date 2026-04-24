@@ -95,15 +95,11 @@ jobs:
       - name: Package (tarball)
         run: make tarball
 
-      # `make deb` is best-effort — requires [package.metadata.deb] in Cargo.toml.
-      # We don't fail the release if it's not configured yet.
       - name: Install cargo-deb
         run: cargo install cargo-deb --locked
-        continue-on-error: true
 
       - name: Package (.deb)
         run: make deb
-        continue-on-error: true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
