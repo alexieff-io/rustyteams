@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  lint-and-test:
+    name: clippy + test (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            os: ubuntu-latest
+          - platform: windows
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      # Linux-only system dependencies: GTK stack for tray-icon/rfd, plus the
+      # shared libs CEF's chromium runtime links against.
+      - name: Install Linux system deps
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config cmake ninja-build build-essential \
+            libgtk-3-dev libayatana-appindicator3-dev libglib2.0-dev \
+            libnss3 libatk1.0-0 libatk-bridge2.0-0 libdrm2 libxkbcommon0 \
+            libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 \
+            libasound2t64 libcups2 libxshmfence1 libpango-1.0-0
+
+      # Cache cargo registry, git deps, and target/ across runs.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ matrix.platform }}
+
+      # Cache the CEF Standard Distribution — it's ~400 MB and slow to export.
+      # Key on Cargo.lock so a cef version bump invalidates the cache.
+      - name: Cache CEF binaries (Linux)
+        if: matrix.platform == 'linux'
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/cef
+          key: cef-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+
+      - name: Cache CEF binaries (Windows)
+        if: matrix.platform == 'windows'
+        uses: actions/cache@v4
+        with:
+          path: ~\.local\share\cef
+          key: cef-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+
+      # `make setup` is a no-op on a cache hit (the target file already exists).
+      - name: Fetch CEF if not cached
+        shell: bash
+        run: make setup
+
+      - name: Clippy
+        shell: bash
+        run: make clippy
+
+      - name: Test
+        shell: bash
+        run: make test
