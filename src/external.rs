@@ -5,17 +5,16 @@ use crate::config;
 
 pub fn open_url(url: &str) {
     if let Some(browser) = config::external_browser() {
-        if browser.exists() {
-            if std::process::Command::new(&browser)
+        if browser.exists()
+            && std::process::Command::new(&browser)
                 .arg(url)
                 .spawn()
                 .is_ok()
-            {
-                return;
-            }
-            // If the custom browser failed to launch, fall through to the OS
-            // default so the user isn't stranded.
+        {
+            return;
         }
+        // If the custom browser failed to launch, fall through to the OS
+        // default so the user isn't stranded.
     }
     open_with_system_default(url);
 }
