@@ -26,9 +26,8 @@ pub fn external_browser() -> Option<PathBuf> {
 }
 
 pub fn set_external_browser(browser: Option<&Path>) -> std::io::Result<()> {
-    let path = external_browser_file().ok_or_else(|| {
-        std::io::Error::new(std::io::ErrorKind::NotFound, "no LOCALAPPDATA")
-    })?;
+    let path = external_browser_file()
+        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "no LOCALAPPDATA"))?;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }

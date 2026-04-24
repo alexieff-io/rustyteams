@@ -48,14 +48,22 @@ wrap_permission_handler! {
 }
 
 fn origin_is_teams(origin: Option<&CefString>) -> bool {
-    let Some(origin) = origin else { return false; };
+    let Some(origin) = origin else {
+        return false;
+    };
     let s = origin.to_string();
-    host_from_origin(&s).map(|h| browser::host_is_allowed(&h)).unwrap_or(false)
+    host_from_origin(&s)
+        .map(|h| browser::host_is_allowed(&h))
+        .unwrap_or(false)
 }
 
 fn host_from_origin(origin: &str) -> Option<String> {
     let rest = origin.split_once("://").map(|(_, r)| r).unwrap_or(origin);
     let host = rest.split(['/', '?', '#']).next()?;
     let host = host.rsplit_once(':').map(|(h, _)| h).unwrap_or(host);
-    if host.is_empty() { None } else { Some(host.to_ascii_lowercase()) }
+    if host.is_empty() {
+        None
+    } else {
+        Some(host.to_ascii_lowercase())
+    }
 }

@@ -49,7 +49,9 @@ wrap_life_span_handler! {
 }
 
 fn is_url_allowed(url: &str) -> bool {
-    url_host(url).map(|h| browser::host_is_allowed(&h)).unwrap_or(false)
+    url_host(url)
+        .map(|h| browser::host_is_allowed(&h))
+        .unwrap_or(false)
 }
 
 fn url_host(url: &str) -> Option<String> {
@@ -57,5 +59,9 @@ fn url_host(url: &str) -> Option<String> {
     let host = rest.split(['/', '?', '#']).next()?;
     let host = host.split('@').next_back()?;
     let host = host.rsplit_once(':').map(|(h, _)| h).unwrap_or(host);
-    if host.is_empty() { None } else { Some(host.to_string()) }
+    if host.is_empty() {
+        None
+    } else {
+        Some(host.to_string())
+    }
 }
