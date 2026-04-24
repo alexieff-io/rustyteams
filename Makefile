@@ -227,6 +227,7 @@ deb: release ## Linux: build a .deb via cargo-deb (see [package.metadata.deb] in
 	  echo "cargo-deb not found. Install with 'cargo install cargo-deb'"; \
 	  exit 1; \
 	}
+	@mkdir -p $(DIST_DIR)
 	$(CARGO) deb --no-build --output $(DIST_DIR)/
 	@echo ">> .deb built in $(DIST_DIR)/"
 endif

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=RustyTeams
+GenericName=Teams
+Comment=Lightweight Microsoft Teams desktop wrapper
+Exec=rustyteams %U
+Icon=rustyteams
+Terminal=false
+Categories=Network;InstantMessaging;Office;
+StartupWMClass=rustyteams
+StartupNotify=true
