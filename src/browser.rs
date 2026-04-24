@@ -27,7 +27,10 @@ fn clear_main_window() {
 
 pub fn with_main_window<F: FnOnce(&Window)>(f: F) -> bool {
     MAIN_WINDOW.with(|c| match c.borrow().as_ref() {
-        Some(w) => { f(w); true }
+        Some(w) => {
+            f(w);
+            true
+        }
         None => false,
     })
 }
@@ -205,9 +208,7 @@ pub fn create_main_window() {
         Some(&mut delegate),
     );
 
-    let mut window_delegate = TeamsWindowDelegate::new(
-        RefCell::new(browser_view),
-        ShowState::NORMAL,
-    );
+    let mut window_delegate =
+        TeamsWindowDelegate::new(RefCell::new(browser_view), ShowState::NORMAL);
     window_create_top_level(Some(&mut window_delegate));
 }

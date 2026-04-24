@@ -2,6 +2,7 @@ use cef::*;
 
 mod display;
 mod download;
+#[cfg(target_os = "windows")]
 mod keyboard;
 mod life_span;
 mod permission;
@@ -21,7 +22,10 @@ wrap_client! {
             Some(download::TeamsDownloadHandler::new())
         }
         fn keyboard_handler(&self) -> Option<KeyboardHandler> {
-            Some(keyboard::TeamsKeyboardHandler::new())
+            #[cfg(target_os = "windows")]
+            { Some(keyboard::TeamsKeyboardHandler::new()) }
+            #[cfg(not(target_os = "windows"))]
+            { None }
         }
         fn life_span_handler(&self) -> Option<LifeSpanHandler> {
             Some(life_span::TeamsLifeSpanHandler::new())

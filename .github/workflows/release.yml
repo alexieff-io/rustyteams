@@ -1,0 +1,144 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  build-windows:
+    name: Build Windows installer + zip
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install NSIS
+        run: choco install nsis -y --no-progress
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-windows
+
+      - name: Cache CEF binaries
+        uses: actions/cache@v4
+        with:
+          path: ~\.local\share\cef
+          key: cef-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+
+      - name: Fetch CEF
+        shell: bash
+        run: make setup
+
+      - name: Build release
+        shell: bash
+        run: make release
+
+      - name: Package (zip)
+        shell: bash
+        run: make dist
+
+      - name: Package (NSIS installer)
+        shell: bash
+        run: make installer
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustyteams-windows
+          path: |
+            dist/rustyteams.zip
+            dist/RustyTeams-Setup-*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  build-linux:
+    name: Build Linux tarball (+ .deb)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config cmake ninja-build build-essential \
+            libgtk-3-dev libayatana-appindicator3-dev libglib2.0-dev \
+            libxdo-dev \
+            libnss3 libatk1.0-0 libatk-bridge2.0-0 libdrm2 libxkbcommon0 \
+            libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 \
+            libasound2t64 libcups2 libxshmfence1 libpango-1.0-0
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-linux
+
+      - name: Cache CEF binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/cef
+          key: cef-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+
+      - name: Fetch CEF
+        run: make setup
+
+      - name: Build release
+        run: make release
+
+      - name: Package (tarball)
+        run: make tarball
+
+      # `make deb` is best-effort — requires [package.metadata.deb] in Cargo.toml.
+      # We don't fail the release if it's not configured yet.
+      - name: Install cargo-deb
+        run: cargo install cargo-deb --locked
+        continue-on-error: true
+
+      - name: Package (.deb)
+        run: make deb
+        continue-on-error: true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustyteams-linux
+          path: |
+            dist/rustyteams.tar.gz
+            dist/*.deb
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    # Only run on tag pushes — workflow_dispatch stops at artifact upload.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: rustyteams-windows
+          path: release-assets/
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: rustyteams-linux
+          path: release-assets/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/**
+          generate_release_notes: true
+          fail_on_unmatched_files: false

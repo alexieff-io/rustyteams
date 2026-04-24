@@ -1,3 +1,9 @@
+#![cfg(target_os = "windows")]
+// Keyboard shortcuts here are Windows-VK specific (VK_Q, VK_0) and the handler
+// takes a `sys::MSG` OS-event pointer that only exists on Windows in the cef
+// crate. Linux will need its own implementation against `sys::XEvent`; until
+// then, `TeamsClient::keyboard_handler` returns None on non-Windows hosts.
+
 use cef::*;
 
 use crate::browser;
