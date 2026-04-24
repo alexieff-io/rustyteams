@@ -150,10 +150,3 @@ rustyteams/
         ├── render_process.rs        # Notification API polyfill (render process)
         └── request.rs
 ```
-
-## Out of scope (for now)
-
-- macOS
-- Chrome extensions
-- Widevine DRM
-- Auto-updates
