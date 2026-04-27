@@ -21,6 +21,19 @@ wrap_app! {
                 // Strip Chromium features that chat apps never need and that
                 // otherwise spam the console with device-enumeration errors.
                 "disable-features=TranslateUI,HardwareMediaKeyHandling,MediaRouter,WebUSB,WebBluetooth,HidBlocklist",
+                // Enable PipeWire-based screen capture on Linux/Wayland — without
+                // it getDisplayMedia silently fails outside X11.
+                "enable-features=WebRtcPipeWireCapturer",
+                // CEF's Alloy runtime ships without a desktop-source picker UI,
+                // so getDisplayMedia normally hangs after the permission grant
+                // because Chromium has no way to ask the user *which* screen to
+                // share. Auto-pick the first matching source so screen sharing
+                // is at least functional. Trade-off: the user can't choose
+                // between monitors or share a single window — both fall back to
+                // sharing the primary screen. A proper in-app picker (enumerate
+                // sources via OS APIs, IPC to renderer, custom HTML chooser) is
+                // tracked as future work.
+                "auto-select-desktop-capture-source=Entire screen|Screen \\d+",
                 "autoplay-policy=no-user-gesture-required",
                 // Throttle background tabs hard when Teams is hidden.
                 "enable-aggressive-background-gc",

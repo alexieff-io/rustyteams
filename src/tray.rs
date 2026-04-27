@@ -91,18 +91,29 @@ pub fn install() -> Option<TrayIcon> {
 }
 
 fn pick_external_browser() {
-    let start = config::external_browser()
-        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-        .or_else(|| Some(std::path::PathBuf::from("C:/Program Files")));
-    let mut dialog = rfd::FileDialog::new()
-        .add_filter("Executable", &["exe"])
-        .set_title("Pick a browser to open external links with");
-    if let Some(dir) = start {
-        dialog = dialog.set_directory(dir);
-    }
-    if let Some(picked) = dialog.pick_file() {
-        let _ = config::set_external_browser(Some(&picked));
-    }
+    // The tray menu callback fires on whatever thread tray-icon dispatches
+    // events on, and rfd's IFileOpenDialog backend wants to run its own
+    // modal message pump there. Hosting it on the same thread as CEF's
+    // run_message_loop freezes the Teams window for the duration of the
+    // dialog, and on Windows occasionally causes the picked path to never
+    // make it back to disk before the next tray event arrives. Spawn a
+    // dedicated worker so the dialog has a clean COM apartment and the UI
+    // thread keeps pumping CEF events.
+    std::thread::spawn(|| {
+        let start = config::external_browser()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .or_else(|| Some(std::path::PathBuf::from("C:/Program Files")));
+        let mut dialog = rfd::FileDialog::new()
+            .add_filter("Executable", &["exe"])
+            .set_title("Pick a browser to open external links with");
+        if let Some(dir) = start {
+            dialog = dialog.set_directory(dir);
+        }
+        let Some(picked) = dialog.pick_file() else { return; };
+        if let Err(e) = config::set_external_browser(Some(&picked)) {
+            eprintln!("rustyteams: failed to save external browser: {e}");
+        }
+    });
 }
 
 fn load_icon() -> tray_icon::Icon {

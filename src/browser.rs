@@ -122,6 +122,16 @@ wrap_window_delegate! {
             window.add_child_view(Some(&mut view));
             let title = CefString::from("Microsoft Teams");
             window.set_title(Some(&title));
+            // Wire our embedded PNGs into both the title-bar (small) and
+            // taskbar/alt-tab (large) icon slots. Without this CEF Views
+            // creates a fresh HWND that doesn't inherit the EXE's icon
+            // resource, so the taskbar shows the generic Chromium glyph.
+            if let Some(mut icon) = build_window_icon() {
+                window.set_window_icon(Some(&mut icon));
+            }
+            if let Some(mut icon) = build_app_icon() {
+                window.set_window_app_icon(Some(&mut icon));
+            }
             if self.initial_show_state != ShowState::HIDDEN {
                 window.show();
             }
@@ -151,6 +161,14 @@ wrap_window_delegate! {
             }
         }
 
+        // CEF Views defaults all of these to false, which strips the
+        // resize grip and the min/max title-bar buttons. Re-enable them
+        // so the window behaves like a normal top-level app window.
+        fn can_resize(&self, _window: Option<&mut Window>) -> i32 { 1 }
+        fn can_maximize(&self, _window: Option<&mut Window>) -> i32 { 1 }
+        fn can_minimize(&self, _window: Option<&mut Window>) -> i32 { 1 }
+        fn with_standard_window_buttons(&self, _window: Option<&mut Window>) -> i32 { 1 }
+
         fn initial_show_state(&self, _window: Option<&mut Window>) -> ShowState {
             self.initial_show_state
         }
@@ -159,6 +177,33 @@ wrap_window_delegate! {
             RuntimeStyle::ALLOY
         }
     }
+}
+
+fn build_window_icon() -> Option<Image> {
+    // Small icon — title bar / window list.
+    static ICON_16: &[u8] = include_bytes!("../resources/icon-16.png");
+    static ICON_32: &[u8] = include_bytes!("../resources/icon-32.png");
+    static ICON_48: &[u8] = include_bytes!("../resources/icon-48.png");
+    let img = image_create()?;
+    img.add_png(1.0, Some(ICON_16));
+    img.add_png(2.0, Some(ICON_32));
+    img.add_png(3.0, Some(ICON_48));
+    Some(img)
+}
+
+fn build_app_icon() -> Option<Image> {
+    // Large icon — taskbar / alt-tab. Multiple reps so HiDPI displays
+    // can pick a crisp size instead of upscaling 32×32.
+    static ICON_32: &[u8] = include_bytes!("../resources/icon-32.png");
+    static ICON_64: &[u8] = include_bytes!("../resources/icon-64.png");
+    static ICON_128: &[u8] = include_bytes!("../resources/icon-128.png");
+    static ICON_256: &[u8] = include_bytes!("../resources/icon-256.png");
+    let img = image_create()?;
+    img.add_png(1.0, Some(ICON_32));
+    img.add_png(2.0, Some(ICON_64));
+    img.add_png(4.0, Some(ICON_128));
+    img.add_png(8.0, Some(ICON_256));
+    Some(img)
 }
 
 wrap_browser_view_delegate! {
